@@ -1,0 +1,18 @@
+# Virtual environment
+sparkenv/
+
+# Python
+__pycache__/
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+
+data/raw/*
+data/synthetic/*
+data/bronze/*
+data/silver/*
+data/gold/*
+
+*.log
+.DS_Store
