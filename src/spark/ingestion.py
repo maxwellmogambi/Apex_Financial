@@ -2,9 +2,12 @@ from pyspark.sql import SparkSession
 from src.spark.schemas import TRANSACTIONS_SCHEMA, CARDS_SCHEMA, CUSTOMERS_SCHEMA, DEVICES_SCHEMA, MERCHANTS_SCHEMA
 from pathlib import Path
 from src.spark.cleaning import clean_transactions, clean_customers, clean_cards, clean_devices, clean_merchants, validate_transactions
+from src.spark.enrichment import enrich_transactions, validate_referential_integrity
+from pyspark.sql import functions as F
+from pyspark.sql.window import Window
+
 
 # Initialise a spark session
-
 spark = SparkSession.builder \
     .appName("Apex Financial - Transaction Ingestion") \
     .master("local[*]") \
@@ -76,20 +79,14 @@ for name, df in silver_dfs.items():
     print(f"✅ Written {name} to {output_path}")    
 
 
-
 # Read the silver transactions parquet file to verify the write operation
 silver_transactions_check = spark.read.parquet(
     str(silver_path / "transactions.parquet")
 )
-# Data validation and integrity checks
-silver_transactions_check.printSchema()
-
-print("Silver Row Count:", silver_transactions_check.count())
-
-silver_transactions_check.show(5, truncate=False)
 
 
 # Data validation and integrity checks
+
 silver_transactions = silver_dfs["transactions"]
 validation_results = validate_transactions(silver_transactions)
 
@@ -97,3 +94,224 @@ print("\n=== Silver Validation ===")
 
 for check, result in validation_results.items():
     print(f"{check}: {result}")
+
+
+## enrich transations with customers, cards, devices, and merchants
+
+enriched_transactions = enrich_transactions(
+    transactions=silver_dfs["transactions"],
+    customers=silver_dfs["customers"],
+    cards=silver_dfs["cards"],
+    devices=silver_dfs["devices"],
+    merchants=silver_dfs["merchants"],
+)    
+
+# inspect the enriched transactions DataFrame
+enriched_transactions.printSchema()
+
+print("🚀 Enriched Row Count:", enriched_transactions.count())
+
+# Validate referential integrity between transactions and other entities
+integrity_results = validate_referential_integrity(
+    silver_dfs["transactions"],
+    silver_dfs["customers"],
+    silver_dfs["cards"],
+    silver_dfs["devices"],
+    silver_dfs["merchants"],
+)
+
+
+# Create Gold fact table from enriched transactions
+fact_transactions = enriched_transactions
+
+gold_path = Path("data/gold")
+gold_path.mkdir(parents=True, exist_ok=True)
+
+fact_transactions.write \
+    .mode("overwrite") \
+    .parquet(str(gold_path / "fact_transactions.parquet"))
+
+
+# Customer transaction summary
+customer_transaction_summary = (
+    fact_transactions
+    .groupBy("customer_id")
+    .agg(
+        F.count("transaction_id").alias("transaction_count"),
+        F.sum("amount").alias("total_amount"),
+        F.avg("amount").alias("avg_transaction_amount"),
+        F.sum(F.when(F.col("is_fraud") == 1, 1).otherwise(0)).alias("fraud_count"),
+        F.min("timestamp").alias("first_transaction_at"),
+        F.max("timestamp").alias("last_transaction_at"),
+    )
+    .withColumn(
+        "fraud_rate",
+        F.col("fraud_count") / F.col("transaction_count")
+    )
+)
+
+# Write the customer transaction summary to Gold layer
+customer_transaction_summary.write \
+    .mode("overwrite") \
+    .parquet(str(gold_path / "customer_transaction_summary.parquet"))
+
+print(
+    f"✅ Written customer_transaction_summary to "
+    f"{gold_path / 'customer_transaction_summary.parquet'}"
+)
+
+
+# Merchant transaction summary 
+merchant_transaction_summary = (
+    fact_transactions
+    .groupBy("merchant_id")
+    .agg(
+        F.count("transaction_id").alias("transaction_count"),
+        F.sum("amount").alias("total_amount"),
+        F.avg("amount").alias("avg_transaction_amount"),
+        F.sum(
+            F.when(F.col("is_fraud") == 1, 1).otherwise(0)
+        ).alias("fraud_count"),
+        F.min("timestamp").alias("first_transaction_at"),
+        F.max("timestamp").alias("last_transaction_at"),
+    )
+    .withColumn(
+        "fraud_rate",
+        F.col("fraud_count") / F.col("transaction_count")
+    )
+)
+
+merchant_transaction_summary.write \
+    .mode("overwrite") \
+    .parquet(str(gold_path / "merchant_transaction_summary.parquet"))
+
+print(
+    f"✅ Written merchant_transaction_summary to "
+    f"{gold_path / 'merchant_transaction_summary.parquet'}"
+)
+
+
+# Customer transaction window
+customer_window = (
+    Window
+    .partitionBy("customer_id")
+    .orderBy("timestamp")
+)
+
+fact_transactions_ranked = (
+    fact_transactions
+    .withColumn(
+        "transaction_sequence",
+        F.row_number().over(customer_window)
+    )
+)
+
+fact_transactions_ranked.select(
+    "customer_id",
+    "transaction_id",
+    "timestamp",
+    "amount",
+    "transaction_sequence"
+).orderBy(
+    "customer_id",
+    "timestamp"
+)
+
+# Calculate the time difference between consecutive transactions for each customer
+customer_window = (
+    Window
+    .partitionBy("customer_id")
+    .orderBy("timestamp")
+)
+
+fact_transactions_windowed = (
+    fact_transactions
+    .withColumn(
+        "transaction_sequence",
+        F.row_number().over(customer_window)
+    )
+    .withColumn(
+        "previous_transaction_at",
+        F.lag("timestamp").over(customer_window)
+    )
+    .withColumn(
+        "minutes_since_previous_transaction",
+        (
+            F.col("timestamp").cast("long")
+            - F.col("previous_transaction_at").cast("long")
+        ) / 60
+    )
+)
+
+fact_transactions_windowed.select(
+    "customer_id",
+    "transaction_id",
+    "timestamp",
+    "previous_transaction_at",
+    "minutes_since_previous_transaction",
+    "transaction_sequence"
+).orderBy(
+    "customer_id",
+    "timestamp"
+)
+
+# Create risk features based on transaction patterns
+transaction_risk_features = (
+    fact_transactions_windowed
+    .withColumn(
+        "is_rapid_transaction",
+        F.when(
+            F.col("minutes_since_previous_transaction") <= 10,
+            1
+        ).otherwise(0)
+    )
+    .withColumn(
+        "is_high_value_transaction",
+        F.when(
+            F.col("amount") >= 500,
+            1
+        ).otherwise(0)
+    )
+    .withColumn(
+        "is_cross_region",
+        F.when(
+            F.col("customer_region") != F.col("merchant_region"),
+            1
+        ).otherwise(0)
+    )
+)
+
+transaction_risk_features.select(
+    "transaction_id",
+    "customer_id",
+    "amount",
+    "minutes_since_previous_transaction",
+    "is_rapid_transaction",
+    "is_high_value_transaction",
+    "customer_region",
+    "merchant_region",
+    "is_cross_region",
+    "is_fraud"
+).show(20, truncate=False)
+
+# Write the transaction risk features to Gold layer
+
+transaction_risk_features.write \
+    .mode("overwrite") \
+    .parquet(
+        str(gold_path / "transaction_risk_features.parquet")
+    )
+
+print(
+    f"✅ Written transaction_risk_features to "
+    f"{gold_path / 'transaction_risk_features.parquet'}"
+)
+
+# Print the row count of the transaction risk features
+print(
+    "Risk Features Row Count:",
+    transaction_risk_features.count()
+)
+
+input("Press Enter to stop Spark...")
+spark.stop()
