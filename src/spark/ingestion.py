@@ -1,6 +1,7 @@
 from pyspark.sql import SparkSession
-from src.spark.schemas import TRANSACTIONS_SCHEMA
+from src.spark.schemas import TRANSACTIONS_SCHEMA, CARDS_SCHEMA, CUSTOMERS_SCHEMA, DEVICES_SCHEMA, MERCHANTS_SCHEMA
 from pathlib import Path
+from src.spark.cleaning import clean_transactions
 
 # Initialise a spark session
 
@@ -20,15 +21,9 @@ print(spark.sparkContext.uiWebUrl)
 # Read the parquet files from the data directory
 data_path = Path("data/synthetic")
 
-dfs = {}
-
 transactions_df = spark.read.schema(TRANSACTIONS_SCHEMA).parquet(str(data_path / "transactions.parquet"))
 
-transactions_df.printSchema()
-
-print("Row Count:", transactions_df.count())
-
-transactions_df.show(5, truncate=False)
+dfs = {}
 
 # for file in data_path.glob("*.parquet"):
 #     name = file.stem
@@ -49,8 +44,18 @@ transactions_df.show(5, truncate=False)
 # # Write back the dataframes to parquet files in bronze layer    
 # bronze_path = Path("data/bronze")
 
+
 # for name, df in dfs.items():
 #     df.write.mode("overwrite").parquet(str(bronze_path / f"{name}.parquet"))
 #     print(f"✅ Written {name} to {bronze_path / f'{name}.parquet'}")
 
-    
+
+
+
+silver_transactions = clean_transactions(transactions_df)
+
+silver_transactions.printSchema()
+
+print("Silver Row Count:", silver_transactions.count())
+
+silver_transactions.show(5, truncate=False)
