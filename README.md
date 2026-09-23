@@ -198,7 +198,7 @@ PostgreSQL serving and Power BI integration are intentionally outside the curren
 ---
 ### Technology Stack
 
-```
+
 <table style="width: 100%; border-collapse: collapse; font-family: sans-serif; margin: 20px 0;">
   <thead>
     <tr style="background-color: #f2f2f2; border-bottom: 2px solid #dddddd;">
@@ -246,7 +246,7 @@ PostgreSQL serving and Power BI integration are intentionally outside the curren
   </tbody>
 </table>
 
-```
+
 
 The project is developed and executed locally using Spark with local[*].
 
