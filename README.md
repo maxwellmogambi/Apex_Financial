@@ -199,18 +199,56 @@ PostgreSQL serving and Power BI integration are intentionally outside the curren
 ### Technology Stack
 
 ```
-| Technology   | Purpose                                           |
-| ------------ | ------------------------------------------------- |
-| Python       | Data generation and Spark application development |
-| PySpark      | Distributed data processing                       |
-| Apache Spark | Execution engine                                  |
-| Pandas       | Supporting data analysis and profiling            |
-| NumPy        | Synthetic data generation                         |
-| PyArrow      | Parquet/data interoperability                     |
-| Parquet      | Columnar data storage                             |
-| Jupyter      | Data profiling, validation, and Spark experiments |
-| Git          | Version control                                   |
+<table style="width: 100%; border-collapse: collapse; font-family: sans-serif; margin: 20px 0;">
+  <thead>
+    <tr style="background-color: #f2f2f2; border-bottom: 2px solid #dddddd;">
+      <th style="padding: 12px; text-align: left; font-weight: bold;">Technology</th>
+      <th style="padding: 12px; text-align: left; font-weight: bold;">Purpose</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom: 1px solid #dddddd;">
+      <td style="padding: 12px; font-weight: bold; color: #333;">Python</td>
+      <td style="padding: 12px; color: #555;">Data generation and Spark application development</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #dddddd;">
+      <td style="padding: 12px; font-weight: bold; color: #333;">PySpark</td>
+      <td style="padding: 12px; color: #555;">Distributed data processing</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #dddddd;">
+      <td style="padding: 12px; font-weight: bold; color: #333;">Apache Spark</td>
+      <td style="padding: 12px; color: #555;">Execution engine</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #dddddd;">
+      <td style="padding: 12px; font-weight: bold; color: #333;">Pandas</td>
+      <td style="padding: 12px; color: #555;">Supporting data analysis and profiling</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #dddddd;">
+      <td style="padding: 12px; font-weight: bold; color: #333;">NumPy</td>
+      <td style="padding: 12px; color: #555;">Synthetic data generation</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #dddddd;">
+      <td style="padding: 12px; font-weight: bold; color: #333;">PyArrow</td>
+      <td style="padding: 12px; color: #555;">Parquet/data interoperability</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #dddddd;">
+      <td style="padding: 12px; font-weight: bold; color: #333;">Parquet</td>
+      <td style="padding: 12px; color: #555;">Columnar data storage</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #dddddd;">
+      <td style="padding: 12px; font-weight: bold; color: #333;">Jupyter</td>
+      <td style="padding: 12px; color: #555;">Data profiling, validation, and Spark experiments</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #dddddd;">
+      <td style="padding: 12px; font-weight: bold; color: #333;">Git</td>
+      <td style="padding: 12px; color: #555;">Version control</td>
+    </tr>
+  </tbody>
+</table>
+
 ```
 
 The project is developed and executed locally using Spark with local[*].
+
+
 
