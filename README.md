@@ -1,201 +1,79 @@
 # Apex Financial — Financial Transactions Intelligence
 
-A production-style Spark data engineering project that demonstrates how large-scale financial transaction data can be ingested, cleaned, enriched, transformed, validated, and analyzed using Apache Spark.
+A Spark-based financial data engineering project that simulates how a digital financial-services company can process, validate, enrich, and analyze large-scale transaction data.
 
-The project uses statistically informed synthetic financial transaction data and a layered Bronze → Silver → Gold architecture to simulate a transaction intelligence platform for a digital financial-services company.
-
----
-
-## Table of Contents
-
-- [Project Overview](#project-overview)
-- [Business Context](#business-context)
-- [Project Objectives](#project-objectives)
-- [Architecture](#architecture)
-- [Technology Stack](#technology-stack)
-- [Data](#data)
-- [Project Structure](#project-structure)
-- [Spark Pipeline](#spark-pipeline)
-- [Bronze Layer](#bronze-layer)
-- [Silver Layer](#silver-layer)
-- [Gold Layer](#gold-layer)
-- [Data Quality and Integrity](#data-quality-and-integrity)
-- [Spark Concepts Demonstrated](#spark-concepts-demonstrated)
-- [Performance and Optimization](#performance-and-optimization)
-- [Scale Testing](#scale-testing)
-- [Running the Project](#running-the-project)
-- [Future Improvements](#future-improvements)
-- [Key Takeaways](#key-takeaways)
+The project focuses on practical Apache Spark engineering, including distributed processing, data quality, joins, aggregations, window functions, and performance optimization.
 
 ---
 
 ## Project Overview
 
-Apex Financial is a hands-on data engineering project built to explore Apache Spark through a realistic financial transaction processing workload.
+Apex Financial simulates a financial transaction platform processing data across:
 
-The project simulates a digital financial-services company processing transactions across customers, cards, devices, and merchants. The platform is designed to transform raw transaction data into trusted analytical datasets that can support customer insights, merchant analysis, and transaction-risk monitoring.
+- Customers
+- Cards
+- Devices
+- Merchants
+- Transactions
 
-The primary goal of the project is to demonstrate **practical Spark engineering**, rather than to build a production fraud-detection model or reproduce a real financial institution's infrastructure.
+The project builds an end-to-end data pipeline that transforms synthetic transaction data into analytics-ready datasets using a **Bronze → Silver → Gold** architecture.
 
-The project focuses on:
+The synthetic data was statistically informed by the **IEEE-CIS Fraud Detection dataset**, allowing the project to maintain realistic transaction distributions and relationships without relying on the original dataset for the processing pipeline.
 
-- Distributed data processing with PySpark
-- Explicit data schemas
-- Parquet-based data storage
-- Layered data architecture
-- Data cleaning and validation
-- Referential-integrity validation
-- Multi-entity joins and enrichment
-- Aggregations and analytical transformations
-- Window functions
-- Transaction-risk feature engineering
-- Spark execution plans
-- Shuffle and partition behavior
-- Broadcast joins
-- Caching and persistence
-- Data skew
-- Performance experimentation
-- Scaling workloads from 100K to 10M transactions
+### Business Objective
 
----
+Provide a scalable data foundation for transaction intelligence, enabling analysis of:
 
-## Business Context
+- Customer transaction behaviour
+- Merchant activity and performance
+- Transaction volumes and values
+- Potential transaction-risk signals
+- Transaction patterns at increasing data volumes
 
-Apex Financial is a fictional digital financial-services company processing a growing volume of transactions across customers, cards, devices, and merchants.
-
-As transaction volumes increase, the organization needs a scalable data processing platform capable of turning operational transaction data into reliable analytical datasets.
-
-The platform needs to support questions such as:
-
-- How are customers transacting over time?
-- What are the transaction volumes and values associated with customers and merchants?
-- Where are unusual transaction patterns occurring?
-- How frequently are rapid transactions occurring?
-- Which transactions involve high-value amounts?
-- How often do customers transact across regions?
-- How does transaction-processing performance change as data volume increases?
-
-The project addresses these requirements through a Spark-based processing pipeline that transforms transaction data into structured Bronze, Silver, and Gold layers.
-
-The resulting Gold datasets provide a foundation for downstream analytics and visualization.
-
----
-
-## Project Objectives
-
-The project has two complementary objectives.
-
-### 1. Build a realistic Spark data pipeline
-
-Implement an end-to-end transaction processing workflow that demonstrates:
-
-- Data ingestion
-- Schema enforcement
-- Cleaning
-- Deduplication
-- Validation
-- Entity enrichment
-- Aggregation
-- Window-based analysis
-- Analytical feature engineering
-- Layered Parquet outputs
-
-### 2. Understand Spark performance
-
-Use controlled experiments to understand how Spark behaves as workloads and processing patterns change.
-
-The optimization work specifically explores:
-
-- Execution plans
-- Shuffle operations
-- Shuffle partition configuration
-- `repartition()` versus `coalesce()`
-- Broadcast joins
-- Caching and persistence
-- Data skew
-- Increasing data volume
-- Spark execution behavior at larger workloads
-
-The project deliberately keeps these experiments separate from the core ingestion pipeline so that the production-style pipeline remains focused on business processing while the optimization notebook acts as a performance laboratory.
+The project is primarily focused on **data engineering and Spark**, rather than building a machine-learning fraud detection model.
 
 ---
 
 ## Architecture
 
-The implemented pipeline follows a layered architecture:
-
 ```text
-                         ┌─────────────────────┐
-                         │   IEEE-CIS Data     │
-                         │  Reference Dataset  │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │ Synthetic Generator │
-                         │   Python / NumPy    │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │   Synthetic Data    │
-                         │      Parquet        │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │       Bronze        │
-                         │ Raw Spark-readable  │
-                         │      Parquet        │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │       Silver        │
-                         │ Cleaned + Validated │
-                         │      Parquet        │
-                         └──────────┬──────────┘
-                                    │
-                          ┌─────────┴─────────┐
-                          │                   │
-                          ▼                   ▼
-                   Entity Enrichment    Data Validation
-                          │                   │
-                          └─────────┬─────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │        Gold         │
-                         │ Analytics-ready     │
-                         │      datasets       │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │ Downstream Analytics│
-                         │    / Visualization  │
-                         │    Future Scope     │
-                         └─────────────────────┘
-```
-
-### Implemented Scope
-
-The current implementation covers the pipeline through the Gold layer:                         
-
-``` text
 Synthetic Data
-      ↓
+      │
+      ▼
    Bronze
-      ↓
+      │
+      ▼
    Silver
-      ↓
-   Enrichment
-      ↓
+      │
+      ├── Cleaning & Validation
+      ├── Referential Integrity
+      └── Entity Enrichment
+      │
+      ▼
     Gold
+      │
+      ├── Transaction Facts
+      ├── Customer Analytics
+      ├── Merchant Analytics
+      └── Transaction Risk Features
 ```
-PostgreSQL serving and Power BI integration are intentionally outside the current implementation scope and are documented as future improvements.
 
----
+The core pipeline is implemented locally with PySpark and stores intermediate and analytical datasets as Parquet.
+
+### Key Capabilities
+- Synthetic financial transaction data generation
+- Explicit Spark schemas and Parquet ingestion
+- Bronze, Silver, and Gold data layers
+- Data cleaning, deduplication, and validation
+- Referential-integrity checks across entities
+- Multi-table Spark joins and enrichment
+- Customer and merchant aggregations
+- Window functions for transaction sequencing and timing analysis
+- Transaction-risk feature engineering
+- Spark execution-plan analysis
+- Broadcast joins, partitioning, caching, and data-skew experiments
+- Performance testing from 100K to 10M transactions
+
 ### Technology Stack
 
 
@@ -246,9 +124,6 @@ PostgreSQL serving and Power BI integration are intentionally outside the curren
   </tbody>
 </table>
 
-
-
-The project is developed and executed locally using Spark with local[*].
 
 
 
