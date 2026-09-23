@@ -5,7 +5,7 @@ from src.spark.cleaning import clean_transactions, clean_customers, clean_cards,
 from src.spark.enrichment import enrich_transactions, validate_referential_integrity
 from pyspark.sql import functions as F
 from pyspark.sql.window import Window
-
+import time
 
 # Initialise a spark session
 spark = SparkSession.builder \
@@ -19,7 +19,6 @@ spark = SparkSession.builder \
 # Print the Spark UI web address
 print("🚀Spark UI Web URL:")
 print(spark.sparkContext.uiWebUrl)
-
 
 # Read the parquet files from the data directory
 data_path = Path("data/synthetic")
@@ -96,7 +95,7 @@ for check, result in validation_results.items():
     print(f"{check}: {result}")
 
 
-## enrich transations with customers, cards, devices, and merchants
+################################## ENRICHED TRANSACTIONS ###################################
 
 enriched_transactions = enrich_transactions(
     transactions=silver_dfs["transactions"],
@@ -132,7 +131,8 @@ fact_transactions.write \
     .parquet(str(gold_path / "fact_transactions.parquet"))
 
 
-# Customer transaction summary
+########################################### CUSTOMER TRANSACTION SUMMARY ###########################################
+
 customer_transaction_summary = (
     fact_transactions
     .groupBy("customer_id")
@@ -161,7 +161,8 @@ print(
 )
 
 
-# Merchant transaction summary 
+########################################### MERCHANT TRANSACTION SUMMARY ###########################################
+
 merchant_transaction_summary = (
     fact_transactions
     .groupBy("merchant_id")
@@ -190,6 +191,8 @@ print(
     f"{gold_path / 'merchant_transaction_summary.parquet'}"
 )
 
+
+########################################### CUSTOMER TRANSACTION WINDOW ###########################################
 
 # Customer transaction window
 customer_window = (
@@ -307,11 +310,6 @@ print(
     f"{gold_path / 'transaction_risk_features.parquet'}"
 )
 
-# Print the row count of the transaction risk features
-print(
-    "Risk Features Row Count:",
-    transaction_risk_features.count()
-)
 
 input("Press Enter to stop Spark...")
 spark.stop()
