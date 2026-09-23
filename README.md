@@ -35,7 +35,7 @@ The project is primarily focused on **data engineering and Spark**, rather than 
 ---
 
 ## Architecture
-
+![alt text](image.png)
 ```text
 Synthetic Data
       │
