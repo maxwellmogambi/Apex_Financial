@@ -1,100 +1,216 @@
-Absolutely. This should be the **project contract** we reference throughout, so we don't drift into unnecessary tools or over-engineering.
-
 # Apex Financial — Financial Transactions Intelligence
 
-### Project Blueprint
+A production-style Spark data engineering project that demonstrates how large-scale financial transaction data can be ingested, cleaned, enriched, transformed, validated, and analyzed using Apache Spark.
 
-**Business Context**
-Apex Financial processes high-volume financial transactions but lacks a scalable platform for consistent transaction analytics, risk monitoring, and customer/merchant insights.
-
-**Objective**
-Build a Spark-based transaction intelligence platform that demonstrates how large-scale financial data can be **ingested, cleaned, enriched, analyzed, optimized, and served for analytics**.
+The project uses statistically informed synthetic financial transaction data and a layered Bronze → Silver → Gold architecture to simulate a transaction intelligence platform for a digital financial-services company.
 
 ---
 
-### Milestones
+## Table of Contents
 
-**1. Data Foundation — ✅ Complete**
-
-* Profile IEEE-CIS reference data
-* Define synthetic data contract
-* Build synthetic generator
-* Validate structural + behavioral realism
-* Lock synthetic dataset
-
-**2. Spark Ingestion**
-
-* Read Parquet with Spark
-* Define explicit schemas
-* Explore DataFrames
-* Understand Spark execution model
-* Establish Bronze layer
-
-**3. Spark Transformation — Silver**
-
-* Data cleaning & type handling
-* Null handling
-* Deduplication
-* Referential integrity
-* Data quality checks
-* Enrichment across entities
-* Write optimized Parquet
-
-**4. Analytics Engineering — Gold**
-Build:
-
-* `fact_transactions`
-* `customer_transaction_summary`
-* `merchant_transaction_summary`
-* `transaction_risk_features`
-
-Practice:
-
-* joins
-* aggregations
-* window functions
-* derived features
-* analytical metrics
-
-**5. Spark Performance & Optimization**
-
-* Partitioning
-* Repartition vs coalesce
-* Broadcast joins
-* Shuffle analysis
-* Data skew
-* Caching
-* Predicate pushdown
-* `explain()` / Spark UI
-* Benchmark before vs after optimization
-
-**6. Analytics Serving**
-
-* Select Gold datasets
-* Load to PostgreSQL
-* Connect Power BI
-* Build business-facing transaction/risk analytics
-
-**7. Productionization — Later**
-Only after the core Spark project works:
-
-* Airflow orchestration
-* Incremental processing
-* Data quality automation
-* Monitoring/observability
-* Potential Kafka/streaming extension
+- [Project Overview](#project-overview)
+- [Business Context](#business-context)
+- [Project Objectives](#project-objectives)
+- [Architecture](#architecture)
+- [Technology Stack](#technology-stack)
+- [Data](#data)
+- [Project Structure](#project-structure)
+- [Spark Pipeline](#spark-pipeline)
+- [Bronze Layer](#bronze-layer)
+- [Silver Layer](#silver-layer)
+- [Gold Layer](#gold-layer)
+- [Data Quality and Integrity](#data-quality-and-integrity)
+- [Spark Concepts Demonstrated](#spark-concepts-demonstrated)
+- [Performance and Optimization](#performance-and-optimization)
+- [Scale Testing](#scale-testing)
+- [Running the Project](#running-the-project)
+- [Future Improvements](#future-improvements)
+- [Key Takeaways](#key-takeaways)
 
 ---
 
-### Scale Progression
+## Project Overview
 
-**10K → 100K → 1M → 10M → 50–100M**
+Apex Financial is a hands-on data engineering project built to explore Apache Spark through a realistic financial transaction processing workload.
 
-The project should **prove Spark's value through increasing scale**, rather than introducing complexity for its own sake.
+The project simulates a digital financial-services company processing transactions across customers, cards, devices, and merchants. The platform is designed to transform raw transaction data into trusted analytical datasets that can support customer insights, merchant analysis, and transaction-risk monitoring.
 
-### Guardrail
+The primary goal of the project is to demonstrate **practical Spark engineering**, rather than to build a production fraud-detection model or reproduce a real financial institution's infrastructure.
 
-> **Core objective = learn and demonstrate Spark at scale.**
-> Every component must support that objective. Optional technologies come only after the core pipeline is complete.
+The project focuses on:
 
-Available next action: Create a downloadable PDF file here in this chat containing the plan and action items above
+- Distributed data processing with PySpark
+- Explicit data schemas
+- Parquet-based data storage
+- Layered data architecture
+- Data cleaning and validation
+- Referential-integrity validation
+- Multi-entity joins and enrichment
+- Aggregations and analytical transformations
+- Window functions
+- Transaction-risk feature engineering
+- Spark execution plans
+- Shuffle and partition behavior
+- Broadcast joins
+- Caching and persistence
+- Data skew
+- Performance experimentation
+- Scaling workloads from 100K to 10M transactions
+
+---
+
+## Business Context
+
+Apex Financial is a fictional digital financial-services company processing a growing volume of transactions across customers, cards, devices, and merchants.
+
+As transaction volumes increase, the organization needs a scalable data processing platform capable of turning operational transaction data into reliable analytical datasets.
+
+The platform needs to support questions such as:
+
+- How are customers transacting over time?
+- What are the transaction volumes and values associated with customers and merchants?
+- Where are unusual transaction patterns occurring?
+- How frequently are rapid transactions occurring?
+- Which transactions involve high-value amounts?
+- How often do customers transact across regions?
+- How does transaction-processing performance change as data volume increases?
+
+The project addresses these requirements through a Spark-based processing pipeline that transforms transaction data into structured Bronze, Silver, and Gold layers.
+
+The resulting Gold datasets provide a foundation for downstream analytics and visualization.
+
+---
+
+## Project Objectives
+
+The project has two complementary objectives.
+
+### 1. Build a realistic Spark data pipeline
+
+Implement an end-to-end transaction processing workflow that demonstrates:
+
+- Data ingestion
+- Schema enforcement
+- Cleaning
+- Deduplication
+- Validation
+- Entity enrichment
+- Aggregation
+- Window-based analysis
+- Analytical feature engineering
+- Layered Parquet outputs
+
+### 2. Understand Spark performance
+
+Use controlled experiments to understand how Spark behaves as workloads and processing patterns change.
+
+The optimization work specifically explores:
+
+- Execution plans
+- Shuffle operations
+- Shuffle partition configuration
+- `repartition()` versus `coalesce()`
+- Broadcast joins
+- Caching and persistence
+- Data skew
+- Increasing data volume
+- Spark execution behavior at larger workloads
+
+The project deliberately keeps these experiments separate from the core ingestion pipeline so that the production-style pipeline remains focused on business processing while the optimization notebook acts as a performance laboratory.
+
+---
+
+## Architecture
+
+The implemented pipeline follows a layered architecture:
+
+```text
+                         ┌─────────────────────┐
+                         │   IEEE-CIS Data     │
+                         │  Reference Dataset  │
+                         └──────────┬──────────┘
+                                    │
+                                    ▼
+                         ┌─────────────────────┐
+                         │ Synthetic Generator │
+                         │   Python / NumPy    │
+                         └──────────┬──────────┘
+                                    │
+                                    ▼
+                         ┌─────────────────────┐
+                         │   Synthetic Data    │
+                         │      Parquet        │
+                         └──────────┬──────────┘
+                                    │
+                                    ▼
+                         ┌─────────────────────┐
+                         │       Bronze        │
+                         │ Raw Spark-readable  │
+                         │      Parquet        │
+                         └──────────┬──────────┘
+                                    │
+                                    ▼
+                         ┌─────────────────────┐
+                         │       Silver        │
+                         │ Cleaned + Validated │
+                         │      Parquet        │
+                         └──────────┬──────────┘
+                                    │
+                          ┌─────────┴─────────┐
+                          │                   │
+                          ▼                   ▼
+                   Entity Enrichment    Data Validation
+                          │                   │
+                          └─────────┬─────────┘
+                                    │
+                                    ▼
+                         ┌─────────────────────┐
+                         │        Gold         │
+                         │ Analytics-ready     │
+                         │      datasets       │
+                         └──────────┬──────────┘
+                                    │
+                                    ▼
+                         ┌─────────────────────┐
+                         │ Downstream Analytics│
+                         │    / Visualization  │
+                         │    Future Scope     │
+                         └─────────────────────┘
+```
+
+### Implemented Scope
+
+The current implementation covers the pipeline through the Gold layer:                         
+
+``` text
+Synthetic Data
+      ↓
+   Bronze
+      ↓
+   Silver
+      ↓
+   Enrichment
+      ↓
+    Gold
+```
+PostgreSQL serving and Power BI integration are intentionally outside the current implementation scope and are documented as future improvements.
+
+---
+### Technology Stack
+
+```
+| Technology   | Purpose                                           |
+| ------------ | ------------------------------------------------- |
+| Python       | Data generation and Spark application development |
+| PySpark      | Distributed data processing                       |
+| Apache Spark | Execution engine                                  |
+| Pandas       | Supporting data analysis and profiling            |
+| NumPy        | Synthetic data generation                         |
+| PyArrow      | Parquet/data interoperability                     |
+| Parquet      | Columnar data storage                             |
+| Jupyter      | Data profiling, validation, and Spark experiments |
+| Git          | Version control                                   |
+```
+
+The project is developed and executed locally using Spark with local[*].
+
