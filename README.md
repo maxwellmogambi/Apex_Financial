@@ -40,28 +40,6 @@ The project is primarily focused on **data engineering and Spark**, rather than 
 ![alt text](image.png)
 
 
-```text
-Synthetic Data
-      │
-      ▼
-   Bronze
-      │
-      ▼
-   Silver
-      │
-      ├── Cleaning & Validation
-      ├── Referential Integrity
-      └── Entity Enrichment
-      │
-      ▼
-    Gold
-      │
-      ├── Transaction Facts
-      ├── Customer Analytics
-      ├── Merchant Analytics
-      └── Transaction Risk Features
-```
-
 The core pipeline is implemented locally with PySpark and stores intermediate and analytical datasets as Parquet.
 
 ### Key Capabilities
